@@ -3,30 +3,31 @@ const fs = require('fs');
 const path = require('path');
 
 async function main() {
-    const [deployer] = await hre.ethers.getSigners();
-    // precompute
-    const poolDeployerAddress = hre.ethers.utils.getContractAddress({
-      from: deployer.address, 
-      nonce: (await deployer.getTransactionCount()) + 1
-    })
-
-    const AlgebraFactory = await hre.ethers.getContractFactory("AlgebraFactory");
-    const factory = await AlgebraFactory.deploy(poolDeployerAddress);
-    await factory.deployed();
-
-    const vaultAddress = await factory.communityVault();
-
+  // Hardhat always runs the compile task when running scripts with its command
+  // line interface.
+  //
+  // If this script is run directly using node you may want to call compile
+  // manually to make sure everything is compiled
+  // await hre.run('compile');
+    const vault = "0xBe56E9aA7792B2f1F4132631B7A0E1927090D78A";
+  // We get the contract to deploy
     const PoolDeployerFactory = await hre.ethers.getContractFactory("AlgebraPoolDeployer");
-    const poolDeployer  = await PoolDeployerFactory.deploy(factory.address, vaultAddress);
+    const poolDeployer  = await PoolDeployerFactory.deploy();
     await poolDeployer.deployed();
+    const AlgebraFactory = await hre.ethers.getContractFactory("AlgebraFactory");
+    const Algebra = await AlgebraFactory.deploy(poolDeployer.address, vault);
+
+    await Algebra.deployed();
+
+    await poolDeployer.setFactory(Algebra.address)
 
     console.log("AlgebraPoolDeployer to:", poolDeployer.address);
-    console.log("AlgebraFactory deployed to:", factory.address);
+    console.log("AlgebraFactory deployed to:", Algebra.address);
     
     const deployDataPath = path.resolve(__dirname, '../../../deploys.json');
     let deploysData = JSON.parse(fs.readFileSync(deployDataPath, 'utf8'));
     deploysData.poolDeployer = poolDeployer.address;
-    deploysData.factory = factory.address;
+    deploysData.factory = Algebra.address;
     fs.writeFileSync(deployDataPath, JSON.stringify(deploysData), 'utf-8');
 
 }

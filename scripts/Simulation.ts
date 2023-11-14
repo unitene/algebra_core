@@ -80,7 +80,7 @@ let createPool = async (firstToken: any, secondToken:any): Promise<SimulationTim
     factory = (await factoryFactory.deploy(poolDeployer.address, vaultAddress)) as SimulationTimeFactory
     await poolDeployer.setFactory(factory.address);
 
-    await factory.setDefaultFeeConfiguration(
+    await factory.setBaseFeeConfiguration(
       FEE_CONFIGURATION.alpha1,
       FEE_CONFIGURATION.alpha2,
       FEE_CONFIGURATION.beta1,

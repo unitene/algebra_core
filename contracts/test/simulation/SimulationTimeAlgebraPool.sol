@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.17;
+pragma solidity =0.7.6;
 
 import '../../AlgebraPool.sol';
-import '../MockTimeDataStorageOperator.sol';
 
 // used for testing time dependent behavior
 contract SimulationTimeAlgebraPool is AlgebraPool {
@@ -17,11 +16,12 @@ contract SimulationTimeAlgebraPool is AlgebraPool {
     return uint32(time);
   }
 
-  function getAverageVolatility() external view returns (uint112 volatilityAverage) {
-    volatilityAverage = MockTimeDataStorageOperator(dataStorageOperator).getAverageVolatility(
+  function getAverages() external view returns (uint112 TWVolatilityAverage, uint256 TWVolumePerLiqAverage) {
+    (TWVolatilityAverage, TWVolumePerLiqAverage) = IDataStorageOperator(dataStorageOperator).getAverages(
       _blockTimestamp(),
-      int24(uint24(globalState.fee)),
-      globalState.timepointIndex
+      globalState.fee,
+      globalState.timepointIndex,
+      liquidity
     );
   }
 }

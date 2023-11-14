@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.17;
+pragma solidity =0.7.6;
 
-import '../libraries/TickTree.sol';
+import '../libraries/TickTable.sol';
 
 contract BitMathTest {
+  function mostSignificantBit(uint256 x) external pure returns (uint8 r) {
+    return TickTable.getMostSignificantBit(x);
+  }
+
+  function getGasCostOfMostSignificantBit(uint256 x) external view returns (uint256) {
+    uint256 gasBefore = gasleft();
+    TickTable.getMostSignificantBit(x);
+    return gasBefore - gasleft();
+  }
+
   function leastSignificantBit(uint256 x) external pure returns (uint8 r) {
-    unchecked {
-      return TickTree.getSingleSignificantBit((0 - x) & x);
-    }
+    return TickTable.getSingleSignificantBit(-x & x);
   }
 
   function getGasCostOfLeastSignificantBit(uint256 x) external view returns (uint256) {
-    unchecked {
-      uint256 gasBefore = gasleft();
-      TickTree.getSingleSignificantBit((0 - x) & x);
-      return gasBefore - gasleft();
-    }
+    uint256 gasBefore = gasleft();
+    TickTable.getSingleSignificantBit(-x & x);
+    return gasBefore - gasleft();
   }
 }

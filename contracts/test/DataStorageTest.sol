@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.17;
+pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import '../libraries/DataStorage.sol';
@@ -29,9 +29,7 @@ contract DataStorageTest {
   }
 
   function advanceTime(uint32 by) public {
-    unchecked {
-      time += by;
-    }
+    time += by;
   }
 
   struct UpdateParams {
@@ -40,10 +38,10 @@ contract DataStorageTest {
     uint128 liquidity;
   }
 
-  // write a timepoint, then change tick and liquidity
+  // write an timepoint, then change tick and liquidity
   function update(UpdateParams calldata params) external {
     advanceTime(params.advanceTimeBy);
-    (index, ) = timepoints.write(index, time, tick);
+    index = timepoints.write(index, time, tick, liquidity, 0); //TODO: fix for testing
     tick = params.tick;
     liquidity = params.liquidity;
   }
@@ -54,13 +52,12 @@ contract DataStorageTest {
     uint128 _liquidity = liquidity;
     uint16 _index = index;
     uint32 _time = time;
-    unchecked {
-      for (uint256 i; i < params.length; ++i) {
-        _time += params[i].advanceTimeBy;
-        (_index, ) = timepoints.write(_index, _time, _tick);
-        _tick = params[i].tick;
-        _liquidity = params[i].liquidity;
-      }
+
+    for (uint256 i = 0; i < params.length; i++) {
+      _time += params[i].advanceTimeBy;
+      _index = timepoints.write(_index, _time, _tick, _liquidity, 0);
+      _tick = params[i].tick;
+      _liquidity = params[i].liquidity;
     }
 
     // sstore everything
@@ -70,50 +67,34 @@ contract DataStorageTest {
     time = _time;
   }
 
-  struct UpdateParamsFixedTimedelta {
-    int24 tick;
-    uint128 liquidity;
-  }
-
-  function batchUpdateFixedTimedelta(UpdateParamsFixedTimedelta[] calldata params) external {
-    // sload everything
-    int24 _tick = tick;
-    uint128 _liquidity = liquidity;
-    uint16 _index = index;
-    uint32 _time = time;
-    unchecked {
-      for (uint256 i; i < params.length; ++i) {
-        _time += 13;
-        (_index, ) = timepoints.write(_index, _time, _tick);
-        _tick = params[i].tick;
-        _liquidity = params[i].liquidity;
-      }
-    }
-
-    // sstore everything
-    tick = _tick;
-    liquidity = _liquidity;
-    index = _index;
-    time = _time;
-  }
-
-  function getTimepoints(
-    uint32[] calldata secondsAgos
-  ) external view returns (int56[] memory tickCumulatives, uint112[] memory volatilityCumulatives) {
-    return timepoints.getTimepoints(time, secondsAgos, tick, index);
+  function getTimepoints(uint32[] calldata secondsAgos)
+    external
+    view
+    returns (
+      int56[] memory tickCumulatives,
+      uint160[] memory secondsPerLiquidityCumulatives,
+      uint112[] memory volatilityCumulatives,
+      uint256[] memory volumePerAvgLiquiditys
+    )
+  {
+    return timepoints.getTimepoints(time, secondsAgos, tick, index, liquidity);
   }
 
   function getGasCostOfGetPoints(uint32[] calldata secondsAgos) external view returns (uint256) {
-    (uint32 _time, int24 _tick, uint16 _index) = (time, tick, index);
-    unchecked {
-      uint256 gasBefore = gasleft();
-      timepoints.getTimepoints(_time, secondsAgos, _tick, _index);
-      return gasBefore - gasleft();
-    }
+    (uint32 _time, int24 _tick, uint128 _liquidity, uint16 _index) = (time, tick, liquidity, index);
+    uint256 gasBefore = gasleft();
+    timepoints.getTimepoints(_time, secondsAgos, _tick, _index, _liquidity);
+    return gasBefore - gasleft();
   }
 
-  function volatilityOnRange(uint32 dt, int24 tick0, int24 tick1, int24 avgTick0, int24 avgTick1) external pure returns (uint256) {
-    return DataStorage._volatilityOnRange(int256(uint256(dt)), tick0, tick1, avgTick0, avgTick1);
+  function volatilityOnRange(
+    uint32 dt,
+    int24 tick0,
+    int24 tick1,
+    int24 avgTick0,
+    int24 avgTick1
+  ) external pure returns (uint256) {
+    return DataStorage._volatilityOnRange(dt, tick0, tick1, avgTick0, avgTick1);
   }
 
   function getAverageTick() external view returns (int256) {
@@ -126,8 +107,7 @@ contract DataStorageTest {
     }
 
     (uint32 _time, int24 _tick, uint16 _index) = (time, tick, index);
-    (int256 avgTick, ) = timepoints._getAverageTick(_time, _tick, _index, oldestIndex, lastTimestamp, lastTickCumulative);
-    return int24(avgTick);
+    return timepoints._getAverageTick(_time, _tick, _index, oldestIndex, lastTimestamp, lastTickCumulative);
   }
 
   function window() external pure returns (uint256) {

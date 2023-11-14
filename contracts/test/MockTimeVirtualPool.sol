@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.17;
-pragma abicoder v1;
+pragma solidity =0.7.6;
 
 import '../interfaces/IAlgebraVirtualPool.sol';
 
@@ -20,13 +19,17 @@ contract MockTimeVirtualPool is IAlgebraVirtualPool {
     isStarted = _isStarted;
   }
 
-  function crossTo(int24 nextTick, bool zeroToOne) external override returns (bool) {
+  function increaseCumulative(uint32 currentTimestamp) external override returns (Status) {
+    if (!isExist) return Status.NOT_EXIST;
+    if (!isStarted) return Status.NOT_STARTED;
+
+    timestamp = currentTimestamp;
+    return Status.ACTIVE;
+  }
+
+  function cross(int24 nextTick, bool zeroToOne) external override {
     zeroToOne;
-    if (!isExist) return false;
+    require(isExist, 'Virtual pool not exist');
     currentTick = nextTick;
-    unchecked {
-      if (isStarted) timestamp = uint32(block.timestamp);
-    }
-    return true;
   }
 }
